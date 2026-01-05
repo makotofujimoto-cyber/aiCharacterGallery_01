@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Motion Gallery 10 (1:1)</title>
+    <!-- Tailwind CSS (CDN経由) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 1:1 アスペクト比の設定（正方形） */
+        .video-container { 
+            aspect-ratio: 1/1; 
+            position: relative; 
+            border-radius: 1rem; 
+            overflow: hidden; 
+            background: #111;
+            border: 1px solid #333;
+        }
+        /* サムネイル画像のスタイリング */
+        .thumbnail-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+        /* 画像がない場合のプレースホルダー（代わりの表示） */
+        .video-placeholder { 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: center; 
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1b4d 100%); 
+        }
+        /* ギャラリー表示時のフェードインアニメーション */
+        .fade-in { 
+            animation: fadeIn 0.5s ease-out forwards; 
+            opacity: 0;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-black text-white p-6 md:p-10 min-h-screen">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-end mb-10 border-b border-gray-800 pb-6">
+            <div>
+                <h1 class="text-4xl font-black tracking-tighter text-purple-500 italic">AI MOTION 10</h1>
+                <p class="text-gray-500 text-sm mt-2 font-medium">
+                    <span class="bg-gray-800 px-3 py-1 rounded-full text-gray-300">登録済み: <span id="count">0</span> / 10</span>
+                </p>
+            </div>
+            <div class="text-right hidden md:block">
+                <p class="text-xs text-gray-600 font-mono uppercase tracking-widest">Minimal Gallery System v3.0</p>
+            </div>
+        </header>
+
+        <!-- ギャラリーグリッドエリア -->
+        <div id="gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+            <!-- JavaScriptによってアイテムがここに挿入されます -->
+        </div>
+    </div>
+
+    <!-- ビデオ再生用モーダル -->
+    <div id="modal" class="fixed inset-0 bg-black/95 hidden z-50 flex items-center justify-center p-4 transition-opacity duration-300" onclick="closeModal()">
+        <div class="max-w-md w-full bg-gray-900 rounded-[2rem] overflow-hidden shadow-2xl border border-gray-800 animate-in fade-in zoom-in duration-300" onclick="event.stopPropagation()">
+            
+            <!-- ビデオ表示エリア（正方形 1:1） -->
+            <div id="modal-video-container" class="aspect-square bg-black flex items-center justify-center relative">
+                <!-- ここにvideoタグが挿入されます -->
+            </div>
+
+            <!-- コンテンツ情報エリア -->
+            <div class="p-8">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <p class="text-purple-500 text-[10px] uppercase tracking-[0.2em] font-bold mb-1" id="modal-type">VISUAL</p>
+                        <h2 id="modal-title" class="text-2xl font-bold text-white tracking-tight">サンプルタイトル</h2>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-white transition-colors p-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <button onclick="closeModal()" class="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold transition-all transform active:scale-95 shadow-lg shadow-purple-500/20">
+                    プレイヤーを閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * --- 設定: ビデオとサムネイルのデータ ---
+         * 'file': MP4ビデオへのパス
+         * 'thumb': サムネイル画像へのパス (jpg, png, webpなど)
+         */
+        const characters = [
+            { id: 1, name: "Neon Runner", type: "Cyberpunk", file: "XmasMiku.mp4", thumb: "XmasMiku.jpg" },
+            { id: 2, name: "Abstract Flow", type: "Motion", file: "video2.mp4", thumb: "thumb2.jpg" },
+            { id: 3, name: "Digital Forest", type: "Environment", file: "video3.mp4", thumb: "thumb3.jpg" },
+            { id: 4, name: "Glitch Portait", type: "Human", file: "video4.mp4", thumb: "thumb4.jpg" },
+            { id: 5, name: "Particle Rain", type: "Visual", file: "video5.mp4", thumb: "thumb5.jpg" },
+            { id: 6, name: "Synthwave Sun", type: "Loop", file: "video6.mp4", thumb: "thumb6.jpg" },
+            { id: 7, name: "Liquid Gold", type: "Material", file: "video7.mp4", thumb: "thumb7.jpg" },
+            { id: 8, name: "Night City", type: "Cityscape", file: "video8.mp4", thumb: "thumb8.jpg" },
+            { id: 9, name: "Floating Island", type: "Fantasy", file: "video9.mp4", thumb: "thumb9.jpg" },
+            { id: 10, name: "Prism Wave", type: "Abstract", file: "video10.mp4", thumb: "thumb10.jpg" }
+        ];
+
+        const gallery = document.getElementById('gallery');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalType = document.getElementById('modal-type');
+        const videoContainer = document.getElementById('modal-video-container');
+
+        /**
+         * ギャラリーのグリッドアイテムを描画する関数
+         */
+        function renderGallery() {
+            gallery.innerHTML = characters.map((char, index) => `
+                <div class="cursor-pointer group fade-in" style="animation-delay: ${index * 0.1}s" onclick="openModal(${char.id})">
+                    <div class="video-container group-hover:scale-[1.03] group-hover:border-purple-500/50 transition-all duration-300 shadow-xl">
+                        <!-- サムネイル表示。画像がない場合はプレースホルダーを表示 -->
+                        <img src="${char.thumb}" 
+                             class="thumbnail-img group-hover:opacity-80 transition-opacity" 
+                             alt="${char.name}"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                        
+                        <!-- フォールバック用プレースホルダー（画像読み込み失敗時に表示） -->
+                        <div class="video-placeholder" style="display:none;">
+                            <span class="text-3xl mb-2 opacity-20">🎬</span>
+                            <span class="text-[10px] font-mono text-gray-500 tracking-tighter">#${String(char.id).padStart(2, '0')}</span>
+                        </div>
+
+                        <div class="absolute bottom-0 p-4 w-full bg-gradient-to-t from-black via-black/70 to-transparent">
+                            <p class="text-[9px] text-purple-400 font-bold uppercase tracking-widest mb-1">${char.type}</p>
+                            <h3 class="font-bold truncate text-sm text-white">${char.name}</h3>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('count').textContent = characters.length;
+        }
+
+        /**
+         * モーダルを開き、ビデオ再生を開始する関数
+         */
+        function openModal(id) {
+            const char = characters.find(c => c.id === id);
+            if (!char) return;
+
+            modalTitle.textContent = char.name;
+            modalType.textContent = char.type;
+
+            // ビデオ要素を挿入
+            videoContainer.innerHTML = `
+                <video src="${char.file}" 
+                        class="w-full h-full object-cover" 
+                        autoplay loop muted playsinline
+                        onerror="showVideoError(this, '${char.file}')">
+                </video>
+            `;
+
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // 背後のスクロールを禁止
+        }
+
+        /**
+         * ビデオファイルが見つからない際のエラー表示
+         */
+        function showVideoError(videoElement, filename) {
+            videoElement.parentElement.innerHTML = `
+                <div class="text-center p-6 bg-gray-900 w-full h-full flex flex-col items-center justify-center">
+                    <div class="text-red-500 text-4xl mb-4">⚠️</div>
+                    <p class="text-gray-300 font-bold mb-1">Video Not Found</p>
+                    <p class="text-gray-500 text-xs font-mono break-all px-4">${filename}</p>
+                </div>
+            `;
+        }
+
+        /**
+         * モーダルを閉じ、ビデオを停止する関数
+         */
+        function closeModal() {
+            modal.classList.add('hidden');
+            videoContainer.innerHTML = ''; 
+            document.body.style.overflow = ''; // スクロール禁止を解除
+        }
+
+        // キーボード操作（Escキー）でモーダルを閉じる
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // ページ読み込み時にギャラリーを表示
+        window.onload = renderGallery;
+    </script>
+</body>
+</html>
